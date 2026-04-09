@@ -81,5 +81,6 @@ class Client:
             self.s.send(json.dumps(packet).encode())
 
 if __name__ == "__main__":
-    cl = Client("127.0.0.1", 9001, "b_g")
+    name=input('Name: ')
+    cl = Client("127.0.0.1", 9000, name)
     cl.init_connection()

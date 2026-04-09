@@ -90,5 +90,5 @@ class Server:
                     client.send(json.dumps(forward_packet).encode())
 
 if __name__ == "__main__":
-    s = Server(9001)
+    s = Server(9000)
     s.start()
