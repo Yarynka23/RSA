@@ -46,27 +46,28 @@ class Server:
 
             # encrypt the secret with the clients public key
 
-            client_public_key = json.loads(c.recv(1024).decode())
-            self.client_keys[c] = {'e': client_public_key['e'], 'n': client_public_key['n']}
+            client_public_key = json.loads(c.recv(2048).decode())
+            self.client_keys[c] = {'socket': c, 'username': username,'e': client_public_key['e'], 'n': client_public_key['n']}
 
             self.clients.append(c)
             self.broadcast(f'new person has joined: {username}')
 
             threading.Thread(target=self.handle_client,args=(c,addr,)).start()
 
-    def broadcast(self, msg: str):
+    def broadcast(self, msg: str, sender: socket = None):
         hashh = hashlib.sha256(str(msg).encode()).hexdigest()
         msg_int = int.from_bytes(msg.encode(), 'big')
 
         for client in self.clients:
-            client_e = self.client_keys[client]['e']
-            client_n = self.client_keys[client]['n']
+            if client != sender:
+                client_e = self.client_keys[client]['e']
+                client_n = self.client_keys[client]['n']
 
-            encrypted = pow(msg_int, client_e, client_n)
-            packet = {'hash': hashh, 'encrypted_message': encrypted}
-            client.send(json.dumps(packet).encode())
+                encrypted = pow(msg_int, client_e, client_n)
+                packet = {'hash': hashh, 'encrypted_message': encrypted}
+                client.send(json.dumps(packet).encode())
 
-    def handle_client(self, c: socket, addr):
+    def handle_client(self, c: socket):
         while True:
             msg = c.recv(1024)
             if not msg:
@@ -75,20 +76,11 @@ class Server:
             packet = json.loads(msg.decode())
             encrypted_int = int(packet['encrypted_message'])
 
-            # 1. Сервер розшифровує своїм ключем
             decrypted_int = pow(encrypted_int, self.d, self.n)
             decrypted_str = decrypted_int.to_bytes((decrypted_int.bit_length() + 7) // 8, 'big').decode()
 
-            # 2. Перешифровує для інших клієнтів
-            for client in self.clients:
-                if client != c:
-                    client_e = self.client_keys[client]['e']
-                    client_n = self.client_keys[client]['n']
-
-                    encrypted_for_client = pow(int.from_bytes(decrypted_str.encode(), 'big'), client_e, client_n)
-                    forward_packet = {'hash': packet['hash'], 'encrypted_message': encrypted_for_client}
-                    client.send(json.dumps(forward_packet).encode())
+            self.broadcast(decrypted_str, sender=c)
 
 if __name__ == "__main__":
-    s = Server(9000)
+    s = Server(9002)
     s.start()

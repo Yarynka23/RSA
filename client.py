@@ -82,5 +82,5 @@ class Client:
 
 if __name__ == "__main__":
     name=input('Name: ')
-    cl = Client("127.0.0.1", 9000, name)
+    cl = Client("127.0.0.1", 9002, name)
     cl.init_connection()
